@@ -1,0 +1,104 @@
+//Changes in Iservice Class
+
+[DataContract]
+    public class SPParam
+    {
+        [DataMember]
+        public string ParamName { get; set; }
+        [DataMember]
+        public string ParamValue { get; set; }
+        [DataMember]
+        public string ParamType { get; set; }
+        [DataMember]
+        public string SqlDBType { get; set; }
+    }
+
+[OperationContract]
+        [WebInvoke(Method = "POST", ResponseFormat = WebMessageFormat.Json, RequestFormat = WebMessageFormat.Json, BodyStyle = WebMessageBodyStyle.WrappedRequest)]
+        string GetData(string procedure, List<SPParam> Param);
+
+
+// Changes in Service.svc Method
+
+public string GetData(string procedure, List<SPParam> Param)
+        {            
+
+            SqlConnection sql = new SqlConnection(con);
+            SqlCommand cmd = new SqlCommand();
+            cmd.Connection = sql;
+            cmd.Connection.Open();
+            if (Param != null && Param.Count > 0)
+            {
+                SqlParameter param = new SqlParameter();
+                foreach (SPParam s in Param)
+                {
+                    param = new SqlParameter();
+                    param.ParameterName = s.ParamName;
+                    param.Value = s.ParamValue;
+
+                    if (s.SqlDBType.ToLower() == "int")
+                        param.SqlDbType = SqlDbType.Int;
+                    else if (s.SqlDBType.ToLower() == "char")
+                        param.SqlDbType = SqlDbType.Char;
+                    else if (s.SqlDBType.ToLower() == "datetime")
+                        param.SqlDbType = SqlDbType.DateTime;
+                    else if (s.SqlDBType.ToLower() == "decimal")
+                        param.SqlDbType = SqlDbType.Decimal;
+                    else if (s.SqlDBType.ToLower() == "image")
+                        param.SqlDbType = SqlDbType.Image;
+                    else if (s.SqlDBType.ToLower() == "nvarchar")
+                        param.SqlDbType = SqlDbType.NVarChar;
+                    else if (s.SqlDBType.ToLower() == "varchar")
+                        param.SqlDbType = SqlDbType.VarChar;
+
+                    if (s.ParamType == "0")
+                        param.Direction = ParameterDirection.Input;
+                    else if (s.ParamType == "1")
+                        param.Direction = ParameterDirection.Output;
+                }
+                cmd.Parameters.Add(param);
+            }
+            cmd.CommandType = CommandType.StoredProcedure;
+            cmd.CommandText = procedure;
+            SqlDataAdapter da = new SqlDataAdapter(cmd);
+            DataSet ds = new DataSet();
+            da.Fill(ds);
+            return JsonConvert.SerializeObject(ds);
+        }
+
+//Changes in HTML
+var listOfObjects=new Array();
+		
+		var prm = new Object();
+        prm.ParamName = "@txt_Test";
+        prm.ParamValue = "Test";
+		prm.ParamType = "0";
+		prm.SqlDBType = "varchar";
+        listOfObjects.push(prm);
+		
+		
+		var jsonList=JSON.stringify(listOfObjects);
+		var dataToSend =  '{"procedure":"sp_test", "Param":'+jsonList+'}';
+	   
+		    var jsondata = dataToSend;//JSON.stringify(response);
+            var result = "";
+            $.ajax({
+                type: 'Post',
+        //        //url: url + 'GetData',
+                url: url + 'GetData',
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                data: jsondata,
+                success: function (msg) {
+                    result = msg.d;                    
+                    if (result != "") {                        
+                        document.getElementById("lbl").innerText = result;
+                    }
+                    else
+                        alert(result);
+                },
+
+                error: function (e) {
+                    alert("Error  : " + e.statusText);                    
+                }
+            });
